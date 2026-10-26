@@ -1,0 +1,55 @@
+[
+  {
+    "id": "gre-equivalent",
+    "rows": 905,
+    "distinctHeadwords": 905,
+    "examples": 0,
+    "days": {
+      "1": 180,
+      "2": 182,
+      "3": 181,
+      "4": 177,
+      "5": 185
+    },
+    "notes": [],
+    "sha256": "8db1b88479fd51891389c5ab36c8b6d7760dd1ed0504b671e03ae3f844c45390"
+  },
+  {
+    "id": "gre-core",
+    "rows": 1450,
+    "distinctHeadwords": 1450,
+    "examples": 1407,
+    "days": {
+      "1": 210,
+      "2": 210,
+      "3": 210,
+      "4": 210,
+      "5": 210,
+      "6": 210,
+      "7": 190
+    },
+    "notes": [
+      {
+        "page": 25,
+        "word": "reinvent",
+        "issue": "原 PDF 例句被表格截断，未导入残句"
+      },
+      {
+        "page": 98,
+        "word": "boundary",
+        "issue": "原 PDF 音标为 qq，留空并使用可用的同词音标或设备朗读"
+      },
+      {
+        "page": 121,
+        "word": "atapremium",
+        "issue": "恢复短语空格：at a premium"
+      },
+      {
+        "page": 157,
+        "word": "atoddswith",
+        "issue": "恢复短语空格：at odds with"
+      }
+    ],
+    "sha256": "de4cb69933bd95e876e0fea2ba45cdba5b8e051ddb1e4f4fc55e257cae0e7c08"
+  }
+]

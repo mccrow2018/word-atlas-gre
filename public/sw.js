@@ -1,5 +1,5 @@
 /* Word Atlas offline cache: app shell network-first, everything else cache-first. */
-const VERSION = "atlas-v1";
+const VERSION = "atlas-v3-aligned-gre";
 const SHELL = `${VERSION}-shell`;
 const MEDIA = `${VERSION}-media`;
 

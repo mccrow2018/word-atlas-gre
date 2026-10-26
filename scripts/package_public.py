@@ -23,7 +23,7 @@ TOP = {
     "README.md", "README.en.md", "LICENSE", "CONTENT_LICENSE.md", "CONTRIBUTING.md", "SECURITY.md",
     ".gitignore", "package.json", "package-lock.json", "tsconfig.json", "vite.config.ts", "index.html",
 }
-SCRIPTS = {"check-atlas.mjs", "render-cards.mjs", "record-demo.mjs", "package_public.py"}
+SCRIPTS = {"check-atlas.mjs", "check-gre.mjs", "render-cards.mjs", "record-demo.mjs", "package_public.py"}
 ATLAS_SCRIPTS = {"common.py", "gen_text.py", "gen_images.py", "gen_brand.py", "gen_word_audio.py", "gen_sentence_audio.py", "gen_sfx.py", "gen_galaxy_audio.sh", "fix_blocked.py", "build_atlas.py", "build_sfx.py"}
 TEXT = {".ts", ".tsx", ".css", ".svg", ".md", ".json", ".mjs", ".js", ".py", ".html", ".csv", ".yml", ".webmanifest", ""}
 PATTERNS = {
@@ -46,15 +46,17 @@ def allowed(rel: Path) -> bool:
     if p[0] == "src":
         return rel.suffix in {".ts", ".tsx", ".css", ".svg"}
     if p[0] == "scripts":
-        return (len(p) == 2 and p[1] in SCRIPTS) or (len(p) == 3 and p[1] == "atlas" and p[2] in ATLAS_SCRIPTS)
+        return (len(p) == 2 and p[1] in SCRIPTS) or (len(p) == 3 and p[1] == "atlas" and p[2] in ATLAS_SCRIPTS) or (len(p) == 3 and p[1] == "gre" and p[2] in {"import_pdfs.py", "align_core.py", "test_align_core.py"})
     if p[0] == "docs":
         return (len(p) == 2 and rel.suffix == ".md") or (len(p) == 3 and p[1] == "assets" and rel.suffix in {".jpg", ".png", ".gif", ".webp", ".mp4"})
     if p[0] == "data":
-        return len(p) == 2 and p[1] in {"word-atlas.json", "word-atlas.csv", "README.md"}
+        return len(p) == 2 and p[1] in {"word-atlas.json", "word-atlas.csv", "README.md", "gre-import-report.json", "gre-alignment-report.json"}
     if name in {".github/workflows/check.yml", ".github/workflows/pages.yml"}:
         return True
     if p[0] == "public":
         inner = p[1:]
+        if inner[0] == "gre":
+            return len(inner) == 2 and inner[1] in {"gre-equivalent.json", "gre-core.json"}
         if len(inner) == 1:
             return inner[0] in {"favicon.svg", "manifest.webmanifest", "icon-512.png", "robots.txt", "sw.js"}
         if inner[0] == "sfx":

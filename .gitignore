@@ -9,3 +9,6 @@ output/
 .DS_Store
 .playwright-cli/
 *.tsbuildinfo
+tmp/
+__pycache__/
+*.pyc

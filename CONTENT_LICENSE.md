@@ -1,5 +1,9 @@
 # 内容授权 / Content license
 
+## 用户提供的 GRE PDF 资料
+
+`public/gre/gre-equivalent.json` 与 `public/gre/gre-core.json` 来自用户提供的张巍 GRE／真经 GRE PDF。原作者权利保留，不适用下文对原有雅思数据的 CC BY 4.0 声明。来源和导入规则见 [GRE 词库说明](docs/gre.md)。
+
 ## 代码 / Code
 
 源代码与界面设计采用 [MIT License](LICENSE)。依赖包保留各自授权；Fraunces 字体为 SIL Open Font License 1.1。

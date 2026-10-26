@@ -47,7 +47,12 @@ export function AtlasPage({
   );
   // Follow the URL when a link switches views while this page is already open.
   useEffect(() => {
-    if (route.view === "grid" || route.view === "list" || route.view === "galaxy") setViewState(route.view);
+    if (
+      route.view === "grid" ||
+      route.view === "list" ||
+      route.view === "galaxy"
+    )
+      setViewState(route.view);
   }, [route.view]);
   const setView = (v: View) => {
     setViewState(v);
@@ -56,6 +61,7 @@ export function AtlasPage({
         page: "atlas",
         topic: route.topic,
         level: route.level,
+        studyDay: route.studyDay,
         view: v === "grid" ? undefined : v,
       },
       null,
@@ -78,7 +84,12 @@ export function AtlasPage({
     const ti = topic ? atlas.topics.findIndex((t) => t[0] === topic) : -1;
     const li = level ? atlas.cefr.indexOf(level) : -1;
     const base = q.trim() ? searchAtlas(atlas, q, 5000) : atlas.words;
+    const day = atlas.learning?.days.find(
+      (d) => String(d.day) === route.studyDay,
+    );
+    const dailyIds = day ? new Set(day.ids) : null;
     return base.filter((w) => {
+      if (dailyIds && !dailyIds.has(w.id)) return false;
       if (ti >= 0 && w.topic !== ti) return false;
       if (li >= 0 && w.cefr !== li) return false;
       const c = cards[w.id];
@@ -88,10 +99,21 @@ export function AtlasPage({
       if (status === "saved") return saved.has(w.id);
       return true;
     });
-  }, [atlas, q, topic, level, status, cards, bookmarks]);
+  }, [atlas, q, topic, level, status, cards, bookmarks, route.studyDay]);
 
   const setFilter = (patch: Partial<Extract<Route, { page: "atlas" }>>) =>
-    go({ page: "atlas", topic, level, view: route.view, ...patch }, null, true);
+    go(
+      {
+        page: "atlas",
+        topic,
+        level,
+        studyDay: route.studyDay,
+        view: route.view,
+        ...patch,
+      },
+      null,
+      true,
+    );
 
   return (
     <div className={`page atlas ${view === "galaxy" ? "is-galaxy" : ""}`}>
@@ -99,12 +121,16 @@ export function AtlasPage({
         <div>
           <p className="eyebrow">图鉴 · {atlas.count.toLocaleString()} 词</p>
           <h1 className="display">
-            每个词，
+            {atlas.source ? atlas.name : "每个词，"}
             <br className="br-sm" />
-            都有一幅画。
+            {!atlas.source && "都有一幅画。"}
           </h1>
           <p className="lede">
-            {atlas.examples.toLocaleString()} 条原创例句 · 英美发音 · 按难度和 {atlas.topics.length} 个雅思话题整理
+            {atlas.source
+              ? atlas.learning
+                ? `${atlas.count} 条机经词 · 参照等价词重排 · 每天 200 个 · 原 PDF DAY 分组另行保留`
+                : `${atlas.count} 条原书词条 · ${atlas.topics.length} 个每日分组 · 保留等价关系与单词朗读`
+              : `${atlas.examples.toLocaleString()} 条原创例句 · 英美发音 · 按难度和 ${atlas.topics.length} 个雅思话题整理`}
           </p>
         </div>
         <label className="search">
@@ -131,6 +157,36 @@ export function AtlasPage({
       <div className="filters">
         {view !== "galaxy" && (
           <>
+            {atlas.learning && (
+              <div
+                className="chips chips-scroll"
+                role="group"
+                aria-label="对齐学习日"
+              >
+                <button
+                  className={`chip-btn ${!route.studyDay ? "is-on" : ""}`}
+                  onClick={() => setFilter({ studyDay: undefined })}
+                >
+                  全部学习日
+                </button>
+                {atlas.learning.days.map((d) => (
+                  <button
+                    key={d.day}
+                    className={`chip-btn ${route.studyDay === String(d.day) ? "is-on" : ""}`}
+                    onClick={() =>
+                      setFilter({
+                        studyDay:
+                          route.studyDay === String(d.day)
+                            ? undefined
+                            : String(d.day),
+                      })
+                    }
+                  >
+                    第 {d.day} 学习日 · {d.ids.length} 词
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="chips chips-scroll" role="group" aria-label="难度">
               <button
                 className={`chip-btn ${!level ? "is-on" : ""}`}
@@ -150,7 +206,11 @@ export function AtlasPage({
                 </button>
               ))}
             </div>
-            <div className="chips chips-scroll" role="group" aria-label="主题">
+            <div
+              className="chips chips-scroll"
+              role="group"
+              aria-label={atlas.source ? "原书每日分组" : "主题"}
+            >
               <button
                 className={`chip-btn ${!topic ? "is-on" : ""}`}
                 onClick={() => setFilter({ topic: undefined })}
@@ -165,7 +225,7 @@ export function AtlasPage({
                     setFilter({ topic: topic === k ? undefined : k })
                   }
                 >
-                  {name}
+                  {atlas.learning ? `原书 ${name}` : name}
                 </button>
               ))}
             </div>
@@ -329,7 +389,12 @@ function VirtualGrid({
               width: cell,
               height: rowH - gap,
             }}
-            onClick={(e) => morphFrom(e.currentTarget.querySelector<HTMLElement>(".illo"), () => openWord(w.id))}
+            onClick={(e) =>
+              morphFrom(
+                e.currentTarget.querySelector<HTMLElement>(".illo"),
+                () => openWord(w.id),
+              )
+            }
           >
             <Illustration
               src={atlas.img(w, "thumb")}

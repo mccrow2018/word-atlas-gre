@@ -1,9 +1,11 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import type { Accent } from "../atlas/types";
 import type { CardState, Grade } from "./srs";
 
 export type QuizKind = "meaning" | "picture" | "listen" | "spell";
-export type Step = { id: string; kind: "intro" } | { id: string; kind: QuizKind; retry?: boolean; options?: string[] };
+export type Step =
+  | { id: string; kind: "intro" }
+  | { id: string; kind: QuizKind; retry?: boolean; options?: string[] };
 
 export interface ActiveSession {
   id: string;
@@ -44,6 +46,8 @@ export interface Progress {
   session: ActiveSession | null;
   /** Rolling list of recent mistakes, newest first. */
   mistakes: string[];
+  /** Local calendar date chosen when starting the fixed five-day course. */
+  planStarted?: string;
 }
 
 export interface Settings {
@@ -56,8 +60,9 @@ export interface Settings {
   spell: boolean;
   startLevel: number;
   onboarded: boolean;
-  dataset: "open" | "private";
-  ambience: "off" | "stars" | "rain" | "sea" | "forest" | "fire" | "voyage" | "cafe";
+  dataset: "open" | "private" | "gre-equivalent" | "gre-core";
+  ambience:
+    "off" | "stars" | "rain" | "sea" | "forest" | "fire" | "voyage" | "cafe";
   ambienceVolume: number;
   splash: boolean;
 }
@@ -72,7 +77,7 @@ export const defaultSettings: Settings = {
   spell: true,
   startLevel: 0,
   onboarded: false,
-  dataset: "open",
+  dataset: "gre-equivalent",
   ambience: "stars",
   ambienceVolume: 0.45,
   splash: true,
@@ -91,6 +96,20 @@ export const emptyProgress = (datasetId: string): Progress => ({
 
 export const dayKey = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+export function useCalendarDay() {
+  const [day, setDay] = useState(() => dayKey());
+  useEffect(() => {
+    const update = () => setDay(dayKey());
+    const timer = window.setInterval(update, 60000);
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", update);
+    };
+  }, []);
+  return day;
+}
 
 const SETTINGS_KEY = "word-atlas:settings";
 const progressKey = (id: string) => `word-atlas:v2:${id}`;
@@ -114,8 +133,10 @@ function write(key: string, value: unknown) {
 
 /* ---------- validation (backups and stored data are untrusted) ---------- */
 
-const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
-const num = (v: unknown, lo = -Infinity, hi = Infinity) => typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi;
+const isObj = (v: unknown): v is Record<string, unknown> =>
+  !!v && typeof v === "object" && !Array.isArray(v);
+const num = (v: unknown, lo = -Infinity, hi = Infinity) =>
+  typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi;
 
 function validCard(v: unknown): v is CardState {
   return (
@@ -137,22 +158,59 @@ function validCard(v: unknown): v is CardState {
 export function sanitizeProgress(v: unknown, datasetId: string): Progress {
   const out = emptyProgress(datasetId);
   if (!isObj(v) || v.version !== 2) return out;
-  if (isObj(v.cards)) for (const [k, c] of Object.entries(v.cards)) if (validCard(c)) out.cards[k] = c;
-  if (Array.isArray(v.bookmarks)) out.bookmarks = v.bookmarks.filter((x): x is string => typeof x === "string").slice(0, 20000);
-  if (Array.isArray(v.mistakes)) out.mistakes = v.mistakes.filter((x): x is string => typeof x === "string").slice(0, 300);
+  if (
+    typeof v.planStarted === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(v.planStarted) &&
+    Number.isFinite(Date.parse(v.planStarted))
+  )
+    out.planStarted = v.planStarted;
+  if (isObj(v.cards))
+    for (const [k, c] of Object.entries(v.cards))
+      if (validCard(c)) out.cards[k] = c;
+  if (Array.isArray(v.bookmarks))
+    out.bookmarks = v.bookmarks
+      .filter((x): x is string => typeof x === "string")
+      .slice(0, 20000);
+  if (Array.isArray(v.mistakes))
+    out.mistakes = v.mistakes
+      .filter((x): x is string => typeof x === "string")
+      .slice(0, 300);
   if (isObj(v.days))
     for (const [k, d] of Object.entries(v.days))
-      if (/^\d{4}-\d{2}-\d{2}$/.test(k) && isObj(d) && num(d.n, 0) && num(d.r, 0) && num(d.c, 0) && num(d.t, 0))
-        out.days[k] = { n: d.n as number, r: d.r as number, c: d.c as number, t: d.t as number };
+      if (
+        /^\d{4}-\d{2}-\d{2}$/.test(k) &&
+        isObj(d) &&
+        num(d.n, 0) &&
+        num(d.r, 0) &&
+        num(d.c, 0) &&
+        num(d.t, 0)
+      )
+        out.days[k] = {
+          n: d.n as number,
+          r: d.r as number,
+          c: d.c as number,
+          t: d.t as number,
+        };
   if (Array.isArray(v.typing))
     out.typing = v.typing
       .filter(
         (t): t is TypingRound =>
-          isObj(t) && num(t.at, 0) && ["word", "sentence", "dictation"].includes(t.mode as string) && num(t.items, 0) && num(t.wpm, 0, 400) && num(t.accuracy, 0, 100),
+          isObj(t) &&
+          num(t.at, 0) &&
+          ["word", "sentence", "dictation"].includes(t.mode as string) &&
+          num(t.items, 0) &&
+          num(t.wpm, 0, 400) &&
+          num(t.accuracy, 0, 100),
       )
       .slice(-500);
   const s = v.session;
-  if (isObj(s) && typeof s.id === "string" && Array.isArray(s.steps) && num(s.index, 0) && isObj(s.graded))
+  if (
+    isObj(s) &&
+    typeof s.id === "string" &&
+    Array.isArray(s.steps) &&
+    num(s.index, 0) &&
+    isObj(s.graded)
+  )
     out.session = s as unknown as ActiveSession;
   return out;
 }
@@ -164,14 +222,35 @@ export function sanitizeSettings(v: unknown): Settings {
   if (typeof v.autoplay === "boolean") s.autoplay = v.autoplay;
   if (num(v.dailyNew, 0, 100)) s.dailyNew = Math.round(v.dailyNew as number);
   if (num(v.retention, 0.7, 0.97)) s.retention = v.retention as number;
-  if (v.theme === "system" || v.theme === "light" || v.theme === "dark") s.theme = v.theme;
+  if (v.theme === "system" || v.theme === "light" || v.theme === "dark")
+    s.theme = v.theme;
   if (typeof v.sfx === "boolean") s.sfx = v.sfx;
   if (typeof v.spell === "boolean") s.spell = v.spell;
-  if (num(v.startLevel, 0, 5)) s.startLevel = Math.round(v.startLevel as number);
+  if (num(v.startLevel, 0, 5))
+    s.startLevel = Math.round(v.startLevel as number);
   if (typeof v.onboarded === "boolean") s.onboarded = v.onboarded;
-  if (v.dataset === "open" || v.dataset === "private") s.dataset = v.dataset;
-  if (["off", "stars", "rain", "sea", "forest", "fire", "voyage", "cafe"].includes(v.ambience as string)) s.ambience = v.ambience as Settings["ambience"];
-  if (num(v.ambienceVolume, 0, 1)) s.ambienceVolume = v.ambienceVolume as number;
+  if (
+    v.dataset === "open" ||
+    v.dataset === "private" ||
+    v.dataset === "gre-equivalent" ||
+    v.dataset === "gre-core"
+  )
+    s.dataset = v.dataset;
+  if (
+    [
+      "off",
+      "stars",
+      "rain",
+      "sea",
+      "forest",
+      "fire",
+      "voyage",
+      "cafe",
+    ].includes(v.ambience as string)
+  )
+    s.ambience = v.ambience as Settings["ambience"];
+  if (num(v.ambienceVolume, 0, 1))
+    s.ambienceVolume = v.ambienceVolume as number;
   if (typeof v.splash === "boolean") s.splash = v.splash;
   return s;
 }
@@ -210,7 +289,9 @@ export function flush() {
   window.clearTimeout(saveTimer);
   if (!dirty) return;
   dirty = false;
-  const progressOk = loadedId !== state.progress.datasetId || write(progressKey(state.progress.datasetId), state.progress);
+  const progressOk =
+    loadedId !== state.progress.datasetId ||
+    write(progressKey(state.progress.datasetId), state.progress);
   const ok = progressOk && write(SETTINGS_KEY, state.settings);
   if (ok === state.saveError) {
     state = { ...state, saveError: !ok };
@@ -220,14 +301,27 @@ export function flush() {
 
 if (typeof window !== "undefined") {
   window.addEventListener("pagehide", flush);
-  document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flush());
+  document.addEventListener(
+    "visibilitychange",
+    () => document.visibilityState === "hidden" && flush(),
+  );
   // Another tab saved: adopt its data instead of keeping a stale copy.
   window.addEventListener("storage", (e) => {
     if (!e.newValue) return;
     try {
-      if (e.key === SETTINGS_KEY) state = { ...state, settings: sanitizeSettings(JSON.parse(e.newValue)) };
+      if (e.key === SETTINGS_KEY)
+        state = {
+          ...state,
+          settings: sanitizeSettings(JSON.parse(e.newValue)),
+        };
       else if (e.key === progressKey(state.progress.datasetId))
-        state = { ...state, progress: sanitizeProgress(JSON.parse(e.newValue), state.progress.datasetId) };
+        state = {
+          ...state,
+          progress: sanitizeProgress(
+            JSON.parse(e.newValue),
+            state.progress.datasetId,
+          ),
+        };
       else return;
       emit();
     } catch {
@@ -244,7 +338,10 @@ export const store = {
   },
   useDataset(datasetId: string) {
     flush();
-    state = { ...state, progress: sanitizeProgress(read(progressKey(datasetId)), datasetId) };
+    state = {
+      ...state,
+      progress: sanitizeProgress(read(progressKey(datasetId)), datasetId),
+    };
     loadedId = datasetId;
     emit();
   },
@@ -261,7 +358,11 @@ export const store = {
 };
 
 export function useStore<T>(select: (s: State) => T): T {
-  return useSyncExternalStore(store.subscribe, () => select(state), () => select(state));
+  return useSyncExternalStore(
+    store.subscribe,
+    () => select(state),
+    () => select(state),
+  );
 }
 
 export function bumpDay(p: Progress, patch: Partial<DayStat>): Progress {
@@ -271,7 +372,12 @@ export function bumpDay(p: Progress, patch: Partial<DayStat>): Progress {
     ...p,
     days: {
       ...p.days,
-      [k]: { n: d.n + (patch.n ?? 0), r: d.r + (patch.r ?? 0), c: d.c + (patch.c ?? 0), t: d.t + (patch.t ?? 0) },
+      [k]: {
+        n: d.n + (patch.n ?? 0),
+        r: d.r + (patch.r ?? 0),
+        c: d.c + (patch.c ?? 0),
+        t: d.t + (patch.t ?? 0),
+      },
     },
   };
 }
@@ -279,7 +385,9 @@ export function bumpDay(p: Progress, patch: Partial<DayStat>): Progress {
 export function toggleBookmark(id: string) {
   store.progress((p) => ({
     ...p,
-    bookmarks: p.bookmarks.includes(id) ? p.bookmarks.filter((x) => x !== id) : [id, ...p.bookmarks],
+    bookmarks: p.bookmarks.includes(id)
+      ? p.bookmarks.filter((x) => x !== id)
+      : [id, ...p.bookmarks],
   }));
 }
 
@@ -288,26 +396,48 @@ export function toggleBookmark(id: string) {
 export function exportBackup() {
   flush();
   const { progress, settings } = state;
-  return JSON.stringify({ app: "word-atlas", version: 2, exported: new Date().toISOString(), progress: { ...progress, session: null }, settings }, null, 1);
+  return JSON.stringify(
+    {
+      app: "word-atlas",
+      version: 2,
+      exported: new Date().toISOString(),
+      progress: { ...progress, session: null },
+      settings,
+    },
+    null,
+    1,
+  );
 }
 
 function markDirty() {
   dirty = true;
 }
 
-export function importBackup(text: string): { ok: true; cards: number } | { ok: false; error: string } {
+export function importBackup(
+  text: string,
+): { ok: true; cards: number } | { ok: false; error: string } {
   let data: unknown;
   try {
     data = JSON.parse(text);
   } catch {
     return { ok: false, error: "文件不是有效的 JSON。" };
   }
-  if (!isObj(data) || data.app !== "word-atlas" || data.version !== 2 || !isObj(data.progress))
+  if (
+    !isObj(data) ||
+    data.app !== "word-atlas" ||
+    data.version !== 2 ||
+    !isObj(data.progress)
+  )
     return { ok: false, error: "这不是词光的学习备份。" };
   const id = state.progress.datasetId;
-  if (data.progress.datasetId !== id) return { ok: false, error: "备份来自另一个词库，请先切换到对应词库。" };
+  if (data.progress.datasetId !== id)
+    return { ok: false, error: "备份来自另一个词库，请先切换到对应词库。" };
   const progress = sanitizeProgress({ ...data.progress, session: null }, id);
-  state = { ...state, progress, settings: { ...sanitizeSettings(data.settings), onboarded: true } };
+  state = {
+    ...state,
+    progress,
+    settings: { ...sanitizeSettings(data.settings), onboarded: true },
+  };
   emit();
   markDirty();
   flush();

@@ -1,8 +1,10 @@
 import type { Atlas, Entry } from "../atlas/types";
 import { toast } from "./Toast";
 
-const SERIF = '"Fraunces Variable", "Songti SC", "Noto Serif SC", Georgia, serif';
-const SANS = '-apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif';
+const SERIF =
+  '"Fraunces Variable", "Songti SC", "Noto Serif SC", Georgia, serif';
+const SANS =
+  '-apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif';
 
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -28,7 +30,14 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
   return lines;
 }
 
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.arcTo(x + w, y, x + w, y + h, r);
@@ -45,7 +54,10 @@ export async function renderWordCard(atlas: Atlas, e: Entry) {
   c.width = W;
   c.height = H;
   const ctx = c.getContext("2d")!;
-  await Promise.all([document.fonts.load(`600 120px ${SERIF}`), document.fonts.load(`italic 400 40px ${SERIF}`)]).catch(() => null);
+  await Promise.all([
+    document.fonts.load(`600 120px ${SERIF}`),
+    document.fonts.load(`italic 400 40px ${SERIF}`),
+  ]).catch(() => null);
 
   ctx.fillStyle = "#F3ECDF";
   ctx.fillRect(0, 0, W, H);
@@ -61,7 +73,17 @@ export async function renderWordCard(atlas: Atlas, e: Entry) {
     try {
       const img = await loadImage(src);
       const crop = img.width * 0.78;
-      ctx.drawImage(img, 0, (img.height - crop) / 2, img.width, crop, pad, pad, art, art * 0.78);
+      ctx.drawImage(
+        img,
+        0,
+        (img.height - crop) / 2,
+        img.width,
+        crop,
+        pad,
+        pad,
+        art,
+        art * 0.78,
+      );
     } catch {
       /* keep the plain plate */
     }
@@ -75,7 +97,13 @@ export async function renderWordCard(atlas: Atlas, e: Entry) {
   y += 62;
   ctx.font = `400 34px ${SANS}`;
   ctx.fillStyle = "#6B6F80";
-  ctx.fillText([e.uk && `英 ${e.uk}`, e.us && e.us !== e.uk && `美 ${e.us}`].filter(Boolean).join("    "), pad, y);
+  ctx.fillText(
+    [e.uk && `英 ${e.uk}`, e.us && e.us !== e.uk && `美 ${e.us}`]
+      .filter(Boolean)
+      .join("    "),
+    pad,
+    y,
+  );
   y += 72;
   ctx.font = `600 40px ${SANS}`;
   ctx.fillStyle = "#1E2640";
@@ -86,7 +114,14 @@ export async function renderWordCard(atlas: Atlas, e: Entry) {
   const posW = ctx.measureText(s0.pos + "  ").width;
   ctx.fillStyle = "#1E2640";
   ctx.font = `600 40px ${SANS}`;
-  ctx.fillText(e.senses.slice(0, 2).map((s) => s.zh).join("；"), pad + posW, y);
+  ctx.fillText(
+    e.senses
+      .slice(0, 2)
+      .map((s) => s.zh)
+      .join("；"),
+    pad + posW,
+    y,
+  );
   y += 76;
   if (e.ex[0]) {
     ctx.font = `italic 400 36px ${SERIF}`;
@@ -109,7 +144,7 @@ export async function renderWordCard(atlas: Atlas, e: Entry) {
   ctx.fillText("词光 · Word Atlas", pad, H - 62);
   ctx.font = `400 26px ${SANS}`;
   ctx.fillStyle = "#7A7C88";
-  const tag = "一词一画，点亮雅思";
+  const tag = atlas.source ? "一步一词，点亮 GRE" : "一词一画，点亮雅思";
   ctx.fillText(tag, W - pad - ctx.measureText(tag).width, H - 64);
   return c;
 }
@@ -117,9 +152,13 @@ export async function renderWordCard(atlas: Atlas, e: Entry) {
 export async function shareWord(atlas: Atlas, e: Entry) {
   try {
     const canvas = await renderWordCard(atlas, e);
-    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
+    const blob = await new Promise<Blob | null>((r) =>
+      canvas.toBlob(r, "image/png"),
+    );
     if (!blob) throw new Error("no blob");
-    const file = new File([blob], `word-atlas-${e.id}.png`, { type: "image/png" });
+    const file = new File([blob], `word-atlas-${e.id}.png`, {
+      type: "image/png",
+    });
     if (navigator.canShare?.({ files: [file] })) {
       await navigator.share({ files: [file], title: e.w }).catch(() => null);
       return;

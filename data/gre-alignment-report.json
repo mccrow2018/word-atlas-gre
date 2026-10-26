@@ -1,0 +1,72 @@
+{
+  "equivalentSha256": "9c343b62bf0027543446d8d2cb078b323adf17b86f3db350a1e2da3015e445db",
+  "coreEntriesSha256": "568158a7b75589a7cc608920d31928121b504fe402a816f0daab4db9694997d2",
+  "days": [
+    {
+      "day": 1,
+      "label": "第 1 学习日",
+      "exact": 167,
+      "related": 33,
+      "supplement": 0,
+      "count": 200
+    },
+    {
+      "day": 2,
+      "label": "第 2 学习日",
+      "exact": 164,
+      "related": 36,
+      "supplement": 0,
+      "count": 200
+    },
+    {
+      "day": 3,
+      "label": "第 3 学习日",
+      "exact": 168,
+      "related": 32,
+      "supplement": 0,
+      "count": 200
+    },
+    {
+      "day": 4,
+      "label": "第 4 学习日",
+      "exact": 166,
+      "related": 34,
+      "supplement": 0,
+      "count": 200
+    },
+    {
+      "day": 5,
+      "label": "第 5 学习日",
+      "exact": 166,
+      "related": 34,
+      "supplement": 0,
+      "count": 200
+    },
+    {
+      "day": 6,
+      "label": "第 6 学习日",
+      "exact": 0,
+      "related": 0,
+      "supplement": 200,
+      "count": 200
+    },
+    {
+      "day": 7,
+      "label": "第 7 学习日",
+      "exact": 0,
+      "related": 0,
+      "supplement": 200,
+      "count": 200
+    },
+    {
+      "day": 8,
+      "label": "第 8 学习日",
+      "exact": 0,
+      "related": 0,
+      "supplement": 50,
+      "count": 50
+    }
+  ],
+  "sameDayHeadwordMatches": 831,
+  "rule": "先锁定同一天的相同主词条，再对空位进行全局分配：原书等价关系 > 共同等价词 > 相同中文释义 > 原序补充；每日组内跟随等价词词序，后续剩余词保持原机经顺序。"
+}
